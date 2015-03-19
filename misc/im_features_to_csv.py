@@ -43,6 +43,7 @@ def main():
 	# Merge with training data (ground truth)
 	df_new = pd.merge(df_media, df_train, on='ID', how='left')
 	df_new = df_new.fillna(0)
+	df_new = df_new[ (df_new.AGE != 0) & (df_new.GENDER != 0)]
 
 	df_new.to_csv('media_and_train.csv',index=False)
 
