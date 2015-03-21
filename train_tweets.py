@@ -15,7 +15,7 @@ def main(output_as):
 
 	# Read training data
 	train = pd.read_csv(train_file)
-	test_file = "testTweetsPreprocessed.csv"
+	test_file = "testTweetsEveryonePreprocessed.csv"
 	test = pd.read_csv(test_file)
 	test.fillna(0,inplace=True)
 	train.fillna(0,inplace=True)
@@ -33,6 +33,7 @@ def main(output_as):
 		target = train["AGE"]
 		del train["AGE"]
 
+		test_ID = test["ID"]
 		del test["ID"]
 		del test["GENDER"]
 		test_target = test["AGE"]
@@ -47,6 +48,7 @@ def main(output_as):
 		target = train["GENDER"]
 		del train["GENDER"]
 
+		test_ID = test["ID"]
 		del test["ID"]
 		
 		test_target = test["GENDER"]
@@ -55,6 +57,8 @@ def main(output_as):
 	
 
 	features = train.as_matrix()
+	print features
+	test_ID = test_ID.as_matrix()
 	test_feat = test.as_matrix()
 	
 	le = preprocessing.LabelEncoder()
@@ -101,7 +105,7 @@ predictions_age = main(output_as='age')
 predictions_gender = main(output_as='gender')
 
 header = ['ID','AGE','GENDER']
-train = pd.read_csv("tweetsLIWCgender.csv")
+train = pd.read_csv("testTweetsEveryonePreprocessed.csv")
 user_id = train["ID"]
 output = [user_id, predictions_age,predictions_gender]
 output = zip(*output)
@@ -109,3 +113,22 @@ with open("tweets_output.csv", "wb") as f:
     writer = csv.writer(f)
     output.insert(0,header)
     writer.writerows(output)
+
+# Get rid of duplicates
+df = pd.read_csv("tweets_output.csv")
+
+for index, row in df.iterrows():
+	row_id = row['ID']
+	df_sub = df[ df.ID == row_id ]
+	if df_sub.shape[0] != 1:
+		new_age = df_sub['AGE'].value_counts().idxmax()
+		if index == 0:
+			print new_age
+		new_gender = df_sub['GENDER'].value_counts().idxmax()\
+
+		df = df[ df.ID != row_id ]
+		df.loc[index] = [row_id, new_age, new_gender]
+	else:
+		continue
+
+df.to_csv("tweets_output.csv",index=False)
