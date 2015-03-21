@@ -75,3 +75,22 @@ with open("media_output.csv", "wb") as f:
     writer = csv.writer(f)
     output.insert(0,header)
     writer.writerows(output)
+
+# Get rid of duplicates
+df = pd.read_csv("media_output.csv")
+
+for index, row in df.iterrows():
+	row_id = row['ID']
+	df_sub = df[ df.ID == row_id ]
+	if df_sub.shape[0] != 1:
+		new_age = df_sub['AGE'].value_counts().idxmax()
+		if index == 0:
+			print new_age
+		new_gender = df_sub['GENDER'].value_counts().idxmax()\
+
+		df = df[ df.ID != row_id ]
+		df.loc[index] = [row_id, new_age, new_gender]
+	else:
+		continue
+
+df.to_csv("media_output.csv",index=False)
