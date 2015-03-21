@@ -3,7 +3,17 @@ import csv
 from json import JSONDecoder
 import json
 import re
+import datetime
+from datetime import timedelta
+from sklearn import feature_extraction
 
+
+def test():
+	checkin = json.load(open('json\checkins.json'), cls=ConcatJSONDecoder, encoding="ISO-8859-1")
+	date_time = datetime.datetime.utcfromtimestamp(checkin[0]['createdAt'])
+	local_date_time = date_time + timedelta(minutes=checkin[0]['timeZoneOffset'])
+	print local_date_time
+	print local_date_time.hour
 
 def preprocess():
 	# Get info from checkin.json
@@ -19,7 +29,7 @@ def preprocess():
 	"""
 
 	features_list = []
-	header_list = ['ID', 'hereNow', 'checkinsCount', 'userCount', 'tipCount']
+	header_list = ['ID', 'hereNow', 'checkinsCount', 'userCount', 'tipCount', 'hour', 'month']
 
 	for idx, myCheckin in enumerate(checkin):
 		userid_data = checkin[idx]['userId']
@@ -29,6 +39,26 @@ def preprocess():
 			row.append(myCheckin['venue']['stats']['checkinsCount'])
 			row.append(myCheckin['venue']['stats']['usersCount'])
 			row.append(myCheckin['venue']['stats']['tipCount'])
+
+			date_time = datetime.datetime.utcfromtimestamp(myCheckin['createdAt'])
+			local_date_time = date_time + timedelta(minutes=myCheckin['timeZoneOffset'])
+
+			if (local_date_time.hour < 4):
+				hour = '0-3'
+			elif (local_date_time.hour < 8):
+				hour = '4-7'
+			elif (local_date_time.hour < 12):
+				hour = '8-11'
+			elif (local_date_time.hour < 16):
+				hour = '12-15'
+			elif (local_date_time.hour < 20):
+				hour = '16-19'
+			elif (local_date_time.hour < 24):
+				hour = '20-23'
+
+			row.append(hour)
+			row.append('month_'+str(local_date_time.month))
+
 		except KeyError:
 			row = [0,0,0,0]
 
@@ -45,9 +75,13 @@ def preprocess():
 	df_checkin.columns = df_checkin.iloc[0]
 	df_checkin = df_checkin.reindex(df_checkin.index.drop(0))
 
-	# Temporarily remove user_id for normalisation
+	# Temporarily remove string col for normalisation
 	user_id = df_checkin['ID']
+	hour_col = df_checkin['hour']
+	month_col = df_checkin['month']
 	del df_checkin['ID']
+	del df_checkin['hour']
+	del df_checkin['month']
 
 	# normalise
 	print df_checkin.dtypes
@@ -56,6 +90,14 @@ def preprocess():
 	
 	# Add back user_id
 	df_checkin.insert(0,'ID',user_id)
+	df_checkin.insert(1,'hour',hour_col)
+	df_checkin.insert(2,'month',month_col)
+
+	# One-hot encoding 'hour' and 'month'
+	df_checkin, _= one_hot_dataframe(df_checkin, ['hour'], replace=True)
+	df_checkin, _= one_hot_dataframe(df_checkin, ['month'], replace=True)
+	del df_checkin['hour']
+	del df_checkin['month']
 
 	# Add categorical information (1-hot encoding)
 	for idx, myCheckin in enumerate(checkin):
@@ -81,6 +123,21 @@ def preprocess():
 	df_new.to_csv('checkin_and_train.csv',index=False,encoding='utf-8')
 
 
+def one_hot_dataframe(data, cols, replace=False):
+    """ Takes a dataframe and a list of columns that need to be encoded.
+        Returns a 3-tuple comprising the data, the vectorized data,
+        and the fitted vectorizor.
+        Modified from https://gist.github.com/kljensen/5452382
+    """
+    vec = feature_extraction.DictVectorizer()
+    mkdict = lambda row: dict((col, row[col]) for col in cols)
+    vecData = pd.DataFrame(vec.fit_transform(data[cols].to_dict(outtype='records')).toarray())
+    vecData.columns = vec.get_feature_names()
+    vecData.index = data.index
+    if replace is True:
+        data = data.drop(cols, axis=1)
+        data = data.join(vecData)
+    return (data, vecData)
 
 """
 http://stackoverflow.com/questions/8730119/retrieving-json-objects-from-a-text-file-using-python
@@ -101,4 +158,7 @@ class ConcatJSONDecoder(json.JSONDecoder):
             objs.append(obj)
         return objs
 
+
+
 preprocess()
+#test()
