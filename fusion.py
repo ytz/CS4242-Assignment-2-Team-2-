@@ -1,5 +1,7 @@
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
 import pandas as pd
 from sklearn import metrics
 from sklearn import preprocessing
@@ -22,8 +24,8 @@ def main(output_as):
 	df.columns = ['ID', 'ageT','genderT','ageM','genderM','ageC','genderC']
 	df.fillna('NA',inplace=True)
 	le = preprocessing.LabelEncoder()
-	le2 = preprocessing.LabelEncoder()
 	lb = preprocessing.LabelBinarizer()
+	
 	test = pd.read_csv("train.csv")
 	df = pd.merge(df, test, on='ID', how='left')
 
@@ -34,9 +36,8 @@ def main(output_as):
 		del df["GENDER"]
 		#del df["ageT"]
 		#del df["ageM"]
-		del df["ageC"]
 	
-		mapper = DataFrameMapper([ ('ageT',le2),('genderT',le),('ageM',le2),('genderM',le), ('genderC',le)]) #didn't include ageC because of encoding issues
+		mapper = DataFrameMapper([ ('ageT',lb),('genderT',le),('ageM',lb),('genderM',le),('ageC',lb), ('genderC',le)]) #didn't include ageC because of encoding issues
 		mapper.fit(df)
 		df = mapper.transform(df)
 		print df.shape
@@ -50,12 +51,12 @@ def main(output_as):
 		#del df["genderT"]
 		#del df["genderM"]
 		#del df["genderC"]
-	
-		mapper = DataFrameMapper([('ageT',le),('genderT',le2),('ageM',le),('genderM',le2), ('genderC',le2) ]) #didn't include ageC because of encoding issues
+		mapper = DataFrameMapper([('ageT',lb),('genderT',le),('ageM',lb),('genderM',le), ('ageC',lb),('genderC',le) ]) #didn't include ageC because of encoding issues
 		mapper.fit(df)
 		df = mapper.transform(df)
-		le.fit(target)
-		target = le.transform(target)
+		
+		lb.fit(target)
+		target = lb.transform(target)
 
 
 	#le = preprocessing.LabelEncoder()
@@ -86,7 +87,10 @@ def main(output_as):
 	print "Accuracy: %f" % accuracy
 	print "F1: %f" % f1
 
-	predictions_train = le.inverse_transform(predictions_train)
+	if output_as == 'gender':
+		predictions_train = le.inverse_transform(predictions_train)
+	elif output_as == 'age':	
+		predictions_train = lb.inverse_transform(predictions_train)
 	return predictions_train
 
 
