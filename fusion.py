@@ -73,12 +73,16 @@ def main(output_as):
 	combinedClassifier.fit(features, target)
 	predictions_train = combinedClassifier.predict(features)
 	
+
+	precision = metrics.precision_score(target, predictions_train, average='macro')
+	recall = metrics.recall_score(target, predictions_train)
 	accuracy = metrics.accuracy_score(target, predictions_train)
 	f1 = metrics.f1_score(target, predictions_train)
 
 
-
 	print output_as
+	print "Precision: %f" % precision
+	print "recall: %f" % recall
 	print "Accuracy: %f" % accuracy
 	print "F1: %f" % f1
 

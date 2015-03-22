@@ -57,7 +57,6 @@ def main(output_as):
 	
 
 	features = train.as_matrix()
-	print features
 	test_ID = test_ID.as_matrix()
 	test_feat = test.as_matrix()
 	
