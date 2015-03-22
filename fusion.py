@@ -9,7 +9,7 @@ import csv
 from scipy import stats
 import numpy as np
 
-def main():
+def main(output_as):
 	dfTweets = pd.read_csv("tweets_output.csv")
 
 	dfMedia = pd.read_csv("media_output.csv")
@@ -19,30 +19,49 @@ def main():
 	df.columns = ['ID', 'ageT','genderT','ageM','genderM']
 	
 	df = pd.merge(df, dfCheck, on='ID', how='outer')
+	df.columns = ['ID', 'ageT','genderT','ageM','genderM','ageC','genderC']
 	df.fillna('NA',inplace=True)
 	le = preprocessing.LabelEncoder()
+	le2 = preprocessing.LabelEncoder()
+	lb = preprocessing.LabelBinarizer()
 	test = pd.read_csv("train.csv")
 	df = pd.merge(df, test, on='ID', how='left')
-	mapper = DataFrameMapper([ ('ageT',preprocessing.LabelBinarizer())])
-	mapper.fit(df)
-	mapper.transform(df)
-	print df
+
+	if output_as == 'gender':
+		target = df["GENDER"]
+		del df["AGE"]
+		del df["ID"]
+		del df["GENDER"]
+		#del df["ageT"]
+		#del df["ageM"]
+		del df["ageC"]
 	
+		mapper = DataFrameMapper([ ('ageT',le2),('genderT',le),('ageM',le2),('genderM',le), ('genderC',le)]) #didn't include ageC because of encoding issues
+		mapper.fit(df)
+		df = mapper.transform(df)
+		print df.shape
+		le.fit(target)
+		target = le.transform(target)
+	elif output_as == 'age':
+		target = df["AGE"]
+		del df["AGE"]
+		del df["ID"]
+		del df["GENDER"]
+		#del df["genderT"]
+		#del df["genderM"]
+		#del df["genderC"]
 	
-	target = df["AGE"]
-	del df["AGE"]
-	del df["ID"]
-	del df["GENDER"]
+		mapper = DataFrameMapper([('ageT',le),('genderT',le2),('ageM',le),('genderM',le2), ('genderC',le2) ]) #didn't include ageC because of encoding issues
+		mapper.fit(df)
+		df = mapper.transform(df)
+		le.fit(target)
+		target = le.transform(target)
 
+
+	#le = preprocessing.LabelEncoder()
 	
 
-
-	le = preprocessing.LabelEncoder()
-	le.fit(target)
-	target = le.transform(target)
-
-	dv.fit(df)
-	features = dv.transform(df)
+	features = df
 	
 	# Train Classifier
 	print("Training the Classifier")
@@ -50,11 +69,14 @@ def main():
 
 
 
-	combinedClassifier = LogisticRegression()
+	combinedClassifier = RandomForestClassifier()
 	combinedClassifier.fit(features, target)
 	predictions_train = combinedClassifier.predict(features)
+	
 	accuracy = metrics.accuracy_score(target, predictions_train)
 	f1 = metrics.f1_score(target, predictions_train)
+
+
 
 	print output_as
 	print "Accuracy: %f" % accuracy
@@ -64,7 +86,34 @@ def main():
 	return predictions_train
 
 
+predictions_age = main(output_as='age')
+predictions_gender = main(output_as='gender')
 
+header = ['ID','AGE','GENDER']
+train = pd.read_csv("testTweetsEveryonePreprocessed.csv")
+user_id = train["ID"]
+output = [user_id, predictions_age,predictions_gender]
+output = zip(*output)
+with open("combined_output.csv", "wb") as f:
+    writer = csv.writer(f)
+    output.insert(0,header)
+    writer.writerows(output)
 
+# Get rid of duplicates
+df = pd.read_csv("combined_output.csv")
 
-main()
+for index, row in df.iterrows():
+	row_id = row['ID']
+	df_sub = df[ df.ID == row_id ]
+	if df_sub.shape[0] != 1:
+		new_age = df_sub['AGE'].value_counts().idxmax()
+		if index == 0:
+			print new_age
+		new_gender = df_sub['GENDER'].value_counts().idxmax()\
+
+		df = df[ df.ID != row_id ]
+		df.loc[index] = [row_id, new_age, new_gender]
+	else:
+		continue
+
+df.to_csv("combined_output.csv",index=False)
