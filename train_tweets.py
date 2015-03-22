@@ -11,13 +11,10 @@ from sklearn import preprocessing
 import csv
 
 def main(output_as):
-	train_file = "tweetsLIWC.csv"
+	train_file = "tweet_and_trainV2.csv"
 
 	# Read training data
 	train = pd.read_csv(train_file)
-	test_file = "testTweetsEveryonePreprocessed.csv"
-	test = pd.read_csv(test_file)
-	test.fillna(0,inplace=True)
 	train.fillna(0,inplace=True)
 	
 
@@ -33,11 +30,7 @@ def main(output_as):
 		target = train["AGE"]
 		del train["AGE"]
 
-		test_ID = test["ID"]
-		del test["ID"]
-		del test["GENDER"]
-		test_target = test["AGE"]
-		del test["AGE"]
+	
 	elif output_as == 'gender':
 		#train_file = "tweetsLIWCgender.csv"
 		#train = pd.read_csv(train_file)
@@ -48,25 +41,15 @@ def main(output_as):
 		target = train["GENDER"]
 		del train["GENDER"]
 
-		test_ID = test["ID"]
-		del test["ID"]
-		
-		test_target = test["GENDER"]
-		del test["GENDER"]
-		del test["AGE"]
 	
 
 	features = train.as_matrix()
-	test_ID = test_ID.as_matrix()
-	test_feat = test.as_matrix()
-	
+
 	le = preprocessing.LabelEncoder()
 	le.fit(target)
 	target = le.transform(target)
 
-	le = preprocessing.LabelEncoder()
-	le.fit(test_target)
-	test_target = le.transform(test_target)
+
 
 	# Train Classifier
 	print("Training the Classifier")
@@ -87,9 +70,9 @@ def main(output_as):
 	#accuracy = metrics.accuracy_score(target, predictions_train)
 	#f1 = metrics.f1_score(target, predictions_train)
 
-	predictions_train = classifier.predict(test_feat)
-	accuracy = metrics.accuracy_score(test_target, predictions_train)
-	f1 = metrics.f1_score(test_target, predictions_train)
+	predictions_train = classifier.predict(features)
+	accuracy = metrics.accuracy_score(target, predictions_train)
+	f1 = metrics.f1_score(target, predictions_train)
 
 	print output_as
 	print "Accuracy: %f" % accuracy
